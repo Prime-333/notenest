@@ -1,7 +1,7 @@
 const { google } = require("googleapis");
 const stream = require("stream");
 
-// Google Service Account Auth
+// Google Service Account Authentication
 const auth = new google.auth.GoogleAuth({
   credentials: {
     client_email: process.env.GOOGLE_CLIENT_EMAIL,
@@ -15,8 +15,12 @@ const drive = google.drive({
   auth,
 });
 
-// Upload file to Google Drive
-const uploadFile = async (file) => {
+/*
+---------------------------------------
+Upload File To Google Drive
+---------------------------------------
+*/
+const uploadFileToDrive = async (file) => {
   try {
     if (!file) {
       throw new Error("No file provided for upload");
@@ -39,7 +43,7 @@ const uploadFile = async (file) => {
 
     const fileId = response.data.id;
 
-    // Make uploaded file public
+    // Make file public
     await drive.permissions.create({
       fileId,
       requestBody: {
@@ -48,9 +52,11 @@ const uploadFile = async (file) => {
       },
     });
 
+    const fileUrl = `https://drive.google.com/uc?id=${fileId}`;
+
     return {
       fileId,
-      fileUrl: `https://drive.google.com/uc?id=${fileId}`,
+      fileUrl,
     };
   } catch (error) {
     console.error("❌ Drive Upload Error:", error.message);
@@ -58,8 +64,12 @@ const uploadFile = async (file) => {
   }
 };
 
-// Delete file from Google Drive
-const deleteFile = async (fileId) => {
+/*
+---------------------------------------
+Delete File From Google Drive
+---------------------------------------
+*/
+const deleteFileFromDrive = async (fileId) => {
   try {
     if (!fileId) return;
 
@@ -74,6 +84,6 @@ const deleteFile = async (fileId) => {
 };
 
 module.exports = {
-  uploadFile,
-  deleteFile,
+  uploadFileToDrive,
+  deleteFileFromDrive,
 };
