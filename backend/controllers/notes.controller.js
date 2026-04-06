@@ -10,10 +10,9 @@ Upload Note
 ---------------------------------------
 */
 exports.uploadNote = asyncHandler(async (req, res) => {
-  const { title, description, branch, semester, subject, noteType } = req.body;
 
-  console.log("📂 req.file:", req.file);
-  console.log("📦 req.body:", req.body);
+  const { title, description, branch, semester, subject, noteType } = req.body;
+  
 
   if (!req.file) {
     return res.status(400).json({
