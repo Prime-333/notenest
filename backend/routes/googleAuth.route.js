@@ -1,48 +1,42 @@
 const express = require("express");
-const router = express.Router();
+const Router = express.Router();
 
 const fs = require("fs");
 const path = require("path");
 
 const { oauth2Client, getAuthUrl, setOAuthCredentials } = require("../utils/googleOAuth");
+const GoogleToken = require("../models/GoogleToken.model");
 
-const TOKEN_PATH = path.join(__dirname, "../config/google-tokens.json");
+const router = express.Router();
 
+/**
+ * Redirect user to Google OAuth
+ */
 router.get("/auth/google", (req, res) => {
   const url = getAuthUrl();
-
-  // TEMP DEBUG: print exact URL + exact redirect URI being used
-  console.log("GOOGLE AUTH URL:", url);
-  console.log("GOOGLE_REDIRECT_URI ENV:", process.env.GOOGLE_REDIRECT_URI);
-
-  // TEMP DEBUG: show it in browser so we can inspect it
-  res.send(`
-    <h2>Google OAuth Debug</h2>
-    <p><strong>GOOGLE_REDIRECT_URI:</strong> ${process.env.GOOGLE_REDIRECT_URI}</p>
-    <p><strong>Generated Auth URL:</strong></p>
-    <textarea style="width:100%;height:200px;">${url}</textarea>
-    <br/><br/>
-    <a href="${url}" target="_blank">Continue to Google</a>
-  `);
+  res.redirect(url);
 });
 
+/**
+ * Google OAuth callback
+ */
 router.get("/auth/google/callback", async (req, res) => {
   try {
     const code = req.query.code;
+    if (!code) return res.status(400).send("No code provided");
 
     const { tokens } = await oauth2Client.getToken(code);
 
-    // Set tokens to OAuth client
     setOAuthCredentials(tokens);
 
-    // Save tokens permanently
-    fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens, null, 2));
+    // Save latest token in MongoDB
+    await GoogleToken.deleteMany({});
+    await GoogleToken.create(tokens);
 
     res.send("Google Drive connected successfully");
-
   } catch (error) {
-    console.error("OAuth error:", error);
-    res.status(500).send("OAuth failed");
+    console.error("Google OAuth Error:", error);
+    res.status(500).send("Google OAuth failed");
   }
 });
 

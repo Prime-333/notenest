@@ -1,72 +1,61 @@
 const { google } = require("googleapis");
-const stream = require("stream");
-const path = require("path");
 const fs = require("fs");
+const GoogleToken = require("../models/GoogleToken.model");
+const { oauth2Client } = require("../utils/googleOAuth");
 
-const TOKEN_PATH = path.join(__dirname, "../config/google-tokens.json");
+const drive = google.drive({
+  version: "v3",
+  auth: oauth2Client,
+});
 
-const getOAuthClient = () => {
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
-  );
+const loadGoogleToken = async () => {
+  const tokenDoc = await GoogleToken.findOne().sort({ createdAt: -1 });
 
-  if (fs.existsSync(TOKEN_PATH)) {
-    const tokens = JSON.parse(fs.readFileSync(TOKEN_PATH));
-    oauth2Client.setCredentials(tokens);
+  if (!tokenDoc) {
+    throw new Error("Google Drive is not connected. Please reconnect OAuth.");
   }
 
-  // auto save refreshed tokens
-  oauth2Client.on("tokens", (tokens) => {
-    const existing = fs.existsSync(TOKEN_PATH)
-      ? JSON.parse(fs.readFileSync(TOKEN_PATH))
-      : {};
-    const updated = { ...existing, ...tokens };
-    fs.writeFileSync(TOKEN_PATH, JSON.stringify(updated, null, 2));
-    console.log("Tokens auto-refreshed and saved");
+  oauth2Client.setCredentials({
+    access_token: tokenDoc.access_token,
+    refresh_token: tokenDoc.refresh_token,
+    scope: tokenDoc.scope,
+    token_type: tokenDoc.token_type,
+    expiry_date: tokenDoc.expiry_date,
   });
-
-  return oauth2Client;
 };
 
-const FOLDER_ID = process.env.DRIVE_FOLDER_ID;
-
-exports.uploadFileToDrive = async (fileBuffer, fileName, mimeType) => {
-  const auth = getOAuthClient();
-  const drive = google.drive({ version: "v3", auth });
-
-  const bufferStream = new stream.PassThrough();
-  bufferStream.end(fileBuffer);
+const uploadToDrive = async (file) => {
+  await loadGoogleToken();
 
   const response = await drive.files.create({
     requestBody: {
-      name: fileName,
-      parents: [FOLDER_ID],
+      name: file.originalname,
+      parents: [process.env.DRIVE_FOLDER_ID],
     },
     media: {
-      mimeType: mimeType || "application/pdf",
-      body: bufferStream,
+      mimeType: file.mimetype,
+      body: fs.createReadStream(file.path),
     },
-    fields: "id",
-    uploadType: "multipart",
+    fields: "id, webViewLink, webContentLink",
   });
 
-  const fileId = response.data.id;
-
-  drive.permissions.create({
-    fileId,
+  await drive.permissions.create({
+    fileId: response.data.id,
     requestBody: {
       role: "reader",
       type: "anyone",
     },
-  }).catch(console.error);
+  });
 
-  return fileId;
+  return response.data;
 };
 
-exports.deleteFileFromDrive = async (fileId) => {
-  const auth = getOAuthClient();
-  const drive = google.drive({ version: "v3", auth });
+const deleteFromDrive = async (fileId) => {
+  await loadGoogleToken();
   await drive.files.delete({ fileId });
+};
+
+module.exports = {
+  uploadToDrive,
+  deleteFromDrive,
 };
