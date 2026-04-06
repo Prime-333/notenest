@@ -1,100 +1,79 @@
 const { google } = require("googleapis");
-const fs = require("fs");
 const stream = require("stream");
-const { oauth2Client, loadOAuthCredentials } = require("../utils/googleOAuth");
+
+// Google Service Account Auth
+const auth = new google.auth.GoogleAuth({
+  credentials: {
+    client_email: process.env.GOOGLE_CLIENT_EMAIL,
+    private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+  },
+  scopes: ["https://www.googleapis.com/auth/drive"],
+});
 
 const drive = google.drive({
   version: "v3",
-  auth: oauth2Client,
+  auth,
 });
 
-/**
- * Convert buffer to readable stream
- */
-const bufferToStream = (buffer) => {
-  const readable = new stream.PassThrough();
-  readable.end(buffer);
-  return readable;
-};
-
-/**
- * Upload file to Google Drive
- */
-const uploadFileToDrive = async (file) => {
+// Upload file to Google Drive
+const uploadFile = async (file) => {
   try {
-    const { oauth2Client, loadOAuthCredentials } = require("../utils/googleOAuth");
     if (!file) {
-      throw new Error("No file received in uploadFileToDrive");
+      throw new Error("No file provided for upload");
     }
 
-    const fileMetadata = {
-      name: file.originalname || "uploaded-file",
-      parents: [process.env.DRIVE_FOLDER_ID],
-    };
-
-    let fileStream;
-
-    // Case 1: file.buffer exists (memory storage / deployed env)
-    if (file.buffer) {
-      fileStream = bufferToStream(file.buffer);
-    }
-    // Case 2: file.path exists (disk storage / local env)
-    else if (file.path) {
-      fileStream = fs.createReadStream(file.path);
-    } else {
-      throw new Error("Neither file.buffer nor file.path is available");
-    }
-
-    const media = {
-      mimeType: file.mimetype || "application/octet-stream",
-      body: fileStream,
-    };
+    const bufferStream = new stream.PassThrough();
+    bufferStream.end(file.buffer);
 
     const response = await drive.files.create({
-      resource: fileMetadata,
-      media,
-      fields: "id, webViewLink, webContentLink",
+      requestBody: {
+        name: file.originalname,
+        parents: [process.env.DRIVE_FOLDER_ID],
+      },
+      media: {
+        mimeType: file.mimetype,
+        body: bufferStream,
+      },
+      fields: "id, name",
     });
 
-    // Make file public
+    const fileId = response.data.id;
+
+    // Make uploaded file public
     await drive.permissions.create({
-      fileId: response.data.id,
+      fileId,
       requestBody: {
         role: "reader",
         type: "anyone",
       },
     });
 
-    // Delete temp file only if it exists
-    if (file.path && fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
-    }
-
     return {
-      fileId: response.data.id,
-      fileUrl: response.data.webViewLink,
-      downloadUrl: response.data.webContentLink,
+      fileId,
+      fileUrl: `https://drive.google.com/uc?id=${fileId}`,
     };
   } catch (error) {
-    console.error("❌ Drive Upload Error:", error.response?.data || error.message);
-    throw error;
+    console.error("❌ Drive Upload Error:", error.message);
+    throw new Error("Failed to upload file to Google Drive");
   }
 };
 
-/**
- * Delete file from Google Drive
- */
-const deleteFileFromDrive = async (fileId) => {
+// Delete file from Google Drive
+const deleteFile = async (fileId) => {
   try {
-    await drive.files.delete({ fileId });
-    console.log("🗑️ File deleted from Google Drive");
+    if (!fileId) return;
+
+    await drive.files.delete({
+      fileId,
+    });
+
+    console.log("🗑 File deleted from Google Drive:", fileId);
   } catch (error) {
-    console.error("❌ Drive Delete Error:", error.response?.data || error.message);
-    throw error;
+    console.error("❌ Drive Delete Error:", error.message);
   }
 };
 
 module.exports = {
-  uploadFileToDrive,
-  deleteFileFromDrive,
+  uploadFile,
+  deleteFile,
 };
