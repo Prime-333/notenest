@@ -1,0 +1,63 @@
+require("dotenv").config({ path: __dirname + "/.env" });
+
+const cors = require("cors");
+const express = require("express");
+
+const connectDB = require("./config/db");
+const { clerkMiddleware } = require("@clerk/express");
+
+const healthRoutes = require("./routes/health.route");
+const protectedRoutes = require("./routes/protected.route");
+const authRoutes = require("./routes/auth.route");
+const notesRoutes = require("./routes/notes.route");
+const adminRoutes = require("./routes/admin.route");
+const googleAuthRoutes = require("./routes/googleAuth.route");
+
+const errorHandler = require("./middlewares/error.middleware");
+
+const app = express();
+
+connectDB();
+
+require("./models/User.model");
+
+app.use(express.json());
+
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      process.env.FRONTEND_URL,
+    ],
+    credentials: true,
+  })
+);
+
+app.use((req, res, next) => {
+  if (req.path.startsWith("/auth/google")) {
+    return next();
+  }
+  clerkMiddleware()(req, res, next);
+});
+
+app.get("/", (req, res) => {
+  res.send("NoteNest backend is running");
+});
+
+app.use("/", healthRoutes);
+app.use("/", protectedRoutes);
+app.use("/", authRoutes);
+app.use("/", notesRoutes);
+app.use("/", adminRoutes);
+app.use("/", googleAuthRoutes);
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
+});
+
+app.use(errorHandler);
+
+module.exports = app;

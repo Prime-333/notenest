@@ -1,0 +1,29 @@
+import axios from "axios";
+
+const API = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000",
+});
+
+API.interceptors.request.use(async (config) => {
+  try {
+    if (window.Clerk?.session) {
+      const token = await window.Clerk.session.getToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+  } catch (error) {
+    console.error("Token error:", error);
+  }
+  return config;
+});
+
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error("API error:", error?.response?.data || error.message);
+    return Promise.reject(error);
+  }
+);
+
+export default API;
