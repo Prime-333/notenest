@@ -1,7 +1,7 @@
 const { google } = require("googleapis");
 const fs = require("fs");
 const stream = require("stream");
-const { oauth2Client } = require("../utils/googleOAuth");
+const { oauth2Client, loadOAuthCredentials } = require("../utils/googleOAuth");
 
 const drive = google.drive({
   version: "v3",
@@ -22,6 +22,7 @@ const bufferToStream = (buffer) => {
  */
 const uploadFileToDrive = async (file) => {
   try {
+    const { oauth2Client, loadOAuthCredentials } = require("../utils/googleOAuth");
     if (!file) {
       throw new Error("No file received in uploadFileToDrive");
     }

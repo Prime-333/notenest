@@ -1,13 +1,13 @@
 const express = require("express");
-const Router = express.Router();
-
-const fs = require("fs");
-const path = require("path");
-
-const { oauth2Client, getAuthUrl, setOAuthCredentials } = require("../utils/googleOAuth");
-const GoogleToken = require("../models/GoogleToken.model");
-
 const router = express.Router();
+
+const {
+  oauth2Client,
+  getAuthUrl,
+  setOAuthCredentials,
+} = require("../utils/googleOAuth");
+
+const GoogleToken = require("../models/GoogleToken.model");
 
 /**
  * Redirect user to Google OAuth
@@ -31,7 +31,15 @@ router.get("/auth/google/callback", async (req, res) => {
 
     // Save latest token in MongoDB
     await GoogleToken.deleteMany({});
-    await GoogleToken.create(tokens);
+    await GoogleToken.create({
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      scope: tokens.scope,
+      token_type: tokens.token_type,
+      expiry_date: tokens.expiry_date,
+    });
+
+    console.log("✅ Google OAuth token saved to MongoDB");
 
     res.send("Google Drive connected successfully");
   } catch (error) {
