@@ -4,6 +4,7 @@ const cors = require("cors");
 const express = require("express");
 
 const connectDB = require("./config/db");
+const { loadOAuthCredentials } = require("./utils/googleOAuth");
 const { clerkMiddleware } = require("@clerk/express");
 
 const healthRoutes = require("./routes/health.route");
@@ -17,9 +18,20 @@ const errorHandler = require("./middlewares/error.middleware");
 
 const app = express();
 
-connectDB();
-
 require("./models/User.model");
+
+// ----------------------
+// Startup DB + OAuth Load
+// ----------------------
+(async () => {
+  try {
+    await connectDB();
+    await loadOAuthCredentials();
+    console.log("🚀 Server Ready with Google Drive Auth");
+  } catch (error) {
+    console.error("❌ Startup Error:", error.message);
+  }
+})();
 
 app.use(express.json());
 
@@ -41,6 +53,7 @@ app.use(
   })
 );
 
+// Clerk bypass for Google OAuth routes
 app.use((req, res, next) => {
   if (req.path.startsWith("/auth/google")) {
     return next();
@@ -59,6 +72,7 @@ app.use("/", notesRoutes);
 app.use("/", adminRoutes);
 app.use("/", googleAuthRoutes);
 
+// 404 route
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -66,6 +80,7 @@ app.use((req, res) => {
   });
 });
 
+// Global error handler
 app.use(errorHandler);
 
 module.exports = app;
