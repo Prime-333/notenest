@@ -1,9 +1,8 @@
-const { deleteFileFromDrive } = require("../services/drive.service");
+const { deleteFileFromDrive, uploadFileToDrive } = require("../services/drive.service");
 const Note = require("../models/Note.model");
 const User = require("../models/User.model");
 
 const asyncHandler = require("../middlewares/asyncHandler");
-const { uploadFileToDrive } = require("../services/drive.service");
 
 /*
 ---------------------------------------
@@ -11,7 +10,10 @@ Upload Note
 ---------------------------------------
 */
 exports.uploadNote = asyncHandler(async (req, res) => {
-  const { title, description, branch, semester, subject, type } = req.body;
+  const { title, description, branch, semester, subject, noteType } = req.body;
+
+  console.log("📂 req.file:", req.file);
+  console.log("📦 req.body:", req.body);
 
   if (!req.file) {
     return res.status(400).json({
@@ -31,25 +33,22 @@ exports.uploadNote = asyncHandler(async (req, res) => {
     });
   }
 
-  const driveFileId = await uploadFileToDrive(
-    req.file.buffer,
-    req.file.originalname,
-    req.file.mimetype
-  );
+  const driveData = await uploadFileToDrive(req.file);
 
-  const fileUrl = `https://drive.google.com/file/d/${driveFileId}/view`;
+  const driveFileId = driveData.fileId;
+  const fileUrl = driveData.fileUrl;
 
   const note = await Note.create({
-  title,
-  description,
-  branch,
-  semester,
-  subject,
-  type,
-  uploadedBy: user._id,
-  driveFileId,
-  fileUrl,
-});
+    title,
+    description,
+    branch,
+    semester,
+    subject,
+    type: noteType,
+    uploadedBy: user._id,
+    driveFileId,
+    fileUrl,
+  });
 
   res.status(201).json({
     success: true,
@@ -64,7 +63,7 @@ Get All Notes
 ---------------------------------------
 */
 exports.getAllNotes = asyncHandler(async (req, res) => {
-const { branch, semester, subject, type, search, sort } = req.query;
+  const { branch, semester, subject, type, search, sort } = req.query;
 
   let filter = { isApproved: true };
 
@@ -376,6 +375,11 @@ exports.reportNote = asyncHandler(async (req, res) => {
   });
 });
 
+/*
+---------------------------------------
+Delete My Note
+---------------------------------------
+*/
 exports.deleteMyNote = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { userId: clerkId } = req.auth();
