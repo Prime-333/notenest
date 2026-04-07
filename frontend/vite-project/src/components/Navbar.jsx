@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useUser, useClerk, SignInButton } from "@clerk/clerk-react";
-import { Search, Upload, Menu, X, BookOpen, Shield } from "lucide-react";
+import { Search, Upload, Menu, X, BookOpen, Shield, LogOut } from "lucide-react";
 
 export default function Navbar() {
   const { isSignedIn, user } = useUser();
@@ -16,17 +16,29 @@ export default function Navbar() {
     if (query.trim()) {
       navigate(`/dashboard?search=${encodeURIComponent(query.trim())}`);
       setQuery("");
+      setMenuOpen(false);
     }
   };
 
-  const isAdmin = user?.publicMetadata?.role === "admin" ||
+  const isAdmin =
+    user?.publicMetadata?.role === "admin" ||
     user?.unsafeMetadata?.role === "admin";
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      setDropdownOpen(false);
+      setMenuOpen(false);
+      navigate("/");
+    } catch (error) {
+      console.error("Sign out failed:", error);
+    }
+  };
 
   return (
     <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
-
           <Link to="/" className="flex items-center gap-2 shrink-0">
             <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center">
               <BookOpen size={16} color="white" strokeWidth={2.5} />
@@ -115,10 +127,7 @@ export default function Navbar() {
                       )}
 
                       <button
-                        onClick={() => {
-                          signOut();
-                          setDropdownOpen(false);
-                        }}
+                        onClick={handleSignOut}
                         className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
                       >
                         Sign out
@@ -168,6 +177,7 @@ export default function Navbar() {
                 className="flex-1 bg-transparent text-sm outline-none"
               />
             </form>
+
             <Link
               to="/dashboard"
               onClick={() => setMenuOpen(false)}
@@ -175,6 +185,7 @@ export default function Navbar() {
             >
               Browse Notes
             </Link>
+
             <Link
               to="/upload"
               onClick={() => setMenuOpen(false)}
@@ -182,6 +193,7 @@ export default function Navbar() {
             >
               Upload Notes
             </Link>
+
             {isSignedIn && (
               <Link
                 to="/profile"
@@ -191,6 +203,7 @@ export default function Navbar() {
                 My Profile
               </Link>
             )}
+
             {isSignedIn && isAdmin && (
               <Link
                 to="/admin"
@@ -199,6 +212,22 @@ export default function Navbar() {
               >
                 Admin Panel
               </Link>
+            )}
+
+            {isSignedIn ? (
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 text-sm font-medium text-red-500 py-1"
+              >
+                <LogOut size={15} />
+                Sign out
+              </button>
+            ) : (
+              <SignInButton mode="modal">
+                <button className="block text-sm font-medium text-gray-700 py-1">
+                  Sign in
+                </button>
+              </SignInButton>
             )}
           </div>
         )}
