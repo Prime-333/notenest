@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import UploadNotes from "./pages/UploadNotes";
 import UserProfile from "./pages/UserProfile";
 import AdminPanel from "./pages/AdminPanel";
+import AdminLogin from "./pages/AdminLogin";
 
 import { syncUser } from "./services/notesService";
 import { setAuthTokenGetter } from "./utils/api";
@@ -57,7 +58,14 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/upload" element={<UploadNotes />} />
         <Route path="/profile" element={<UserProfile />} />
-        <Route path="/admin" element={<AdminPanel />} />
+
+        {/* Admin routes — standalone (no Clerk required) */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={<AdminPanel />} />
+
+        {/* Legacy /admin redirect */}
+        <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
