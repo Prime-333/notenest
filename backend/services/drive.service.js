@@ -1,18 +1,10 @@
 const { google } = require("googleapis");
 const stream = require("stream");
-
-// Google Service Account Authentication
-const auth = new google.auth.GoogleAuth({
-  credentials: {
-    client_email: process.env.GOOGLE_CLIENT_EMAIL,
-    private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-  },
-  scopes: ["https://www.googleapis.com/auth/drive"],
-});
+const { oauth2Client } = require("../utils/googleOAuth");
 
 const drive = google.drive({
   version: "v3",
-  auth,
+  auth: oauth2Client,
 });
 
 /*
@@ -43,7 +35,6 @@ const uploadFileToDrive = async (file) => {
 
     const fileId = response.data.id;
 
-    // Make file public
     await drive.permissions.create({
       fileId,
       requestBody: {
@@ -59,7 +50,7 @@ const uploadFileToDrive = async (file) => {
       fileUrl,
     };
   } catch (error) {
-    console.error("❌ Drive Upload Error:", error.message);
+    console.error("❌ Drive Upload Error:", error.response?.data || error.message);
     throw new Error("Failed to upload file to Google Drive");
   }
 };
@@ -79,7 +70,7 @@ const deleteFileFromDrive = async (fileId) => {
 
     console.log("🗑 File deleted from Google Drive:", fileId);
   } catch (error) {
-    console.error("❌ Drive Delete Error:", error.message);
+    console.error("❌ Drive Delete Error:", error.response?.data || error.message);
   }
 };
 

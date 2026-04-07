@@ -4,7 +4,7 @@ const cors = require("cors");
 const express = require("express");
 
 const connectDB = require("./config/db");
-const { loadOAuthCredentials } = require("./utils/googleOAuth");
+const { loadSavedGoogleToken } = require("./utils/googleOAuth");
 const { clerkMiddleware } = require("@clerk/express");
 
 const healthRoutes = require("./routes/health.route");
@@ -19,15 +19,16 @@ const errorHandler = require("./middlewares/error.middleware");
 const app = express();
 
 require("./models/User.model");
+require("./models/GoogleToken.model");
 
 // ----------------------
-// Startup DB + OAuth Load
+// Startup DB + Google Token Load
 // ----------------------
 (async () => {
   try {
     await connectDB();
-    await loadOAuthCredentials();
-    console.log("🚀 Server Ready with Google Drive Auth");
+    await loadSavedGoogleToken();
+    console.log("🚀 Server Ready with Google Drive OAuth");
   } catch (error) {
     console.error("❌ Startup Error:", error.message);
   }
