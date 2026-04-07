@@ -3,34 +3,45 @@ const { clerkClient } = require("@clerk/express");
 
 exports.syncUser = async (req, res) => {
   try {
-    const { userId } = req.auth();
+    console.log("========== SYNC USER START ==========");
+    console.log("REQ AUTH OBJECT:", req.auth);
+
+    const authData =
+      typeof req.auth === "function" ? req.auth() : req.auth;
+
+    console.log("PARSED AUTH DATA:", authData);
+
+    const userId = authData?.userId;
+
+    console.log("USER ID FROM CLERK:", userId);
 
     if (!userId) {
+      console.log("❌ No userId found in auth");
       return res.status(401).json({
         success: false,
-        message: "Unauthorized",
+        message: "Unauthorized - No userId",
       });
     }
 
-    /**
-     * Fetch full user from Clerk directly
-     */
+    console.log("📡 Fetching Clerk user...");
+
     const clerkUser = await clerkClient.users.getUser(userId);
 
-    const email =
-      clerkUser.emailAddresses[0]?.emailAddress || "";
+    console.log("✅ Clerk user fetched:", {
+      id: clerkUser.id,
+      firstName: clerkUser.firstName,
+      lastName: clerkUser.lastName,
+      email: clerkUser.emailAddresses?.[0]?.emailAddress,
+    });
 
+    const email = clerkUser.emailAddresses?.[0]?.emailAddress || "";
     const firstName = clerkUser.firstName || "";
     const lastName = clerkUser.lastName || "";
-
-    const fullName =
-      `${firstName} ${lastName}`.trim() || "User";
-
+    const fullName = `${firstName} ${lastName}`.trim() || "User";
     const profileImage = clerkUser.imageUrl || "";
 
-    /**
-     * Atomic upsert
-     */
+    console.log("📝 Upserting user into MongoDB...");
+
     const user = await User.findOneAndUpdate(
       { clerkId: userId },
       {
@@ -45,12 +56,16 @@ exports.syncUser = async (req, res) => {
       }
     );
 
+    console.log("✅ USER SAVED IN MONGODB:", user);
+    console.log("========== SYNC USER END ==========");
+
     return res.status(200).json({
       success: true,
+      message: "User synced successfully",
       user,
     });
   } catch (error) {
-    console.error("SYNC ERROR:", error);
+    console.error("❌ SYNC ERROR FULL:", error);
     return res.status(500).json({
       success: false,
       message: error.message,

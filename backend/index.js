@@ -36,9 +36,13 @@ require("./models/GoogleToken.model");
 
 app.use(express.json());
 
+// ----------------------
+// CORS Configuration
+// ----------------------
 const allowedOrigins = [
   "http://localhost:5173",
   "https://notenest-sigma-neon.vercel.app",
+  "https://notenest.vercel.app",
 ];
 
 app.use(
@@ -47,6 +51,7 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
+        console.log("❌ CORS Blocked Origin:", origin);
         callback(new Error("CORS not allowed"));
       }
     },
@@ -54,18 +59,29 @@ app.use(
   })
 );
 
-// Clerk bypass for Google OAuth routes
+// ----------------------
+// Request Logger (Debug)
+// ----------------------
 app.use((req, res, next) => {
-  if (req.path.startsWith("/auth/google")) {
-    return next();
-  }
-  clerkMiddleware()(req, res, next);
+  console.log(`🌐 ${req.method} ${req.originalUrl}`);
+  next();
 });
 
+// ----------------------
+// Clerk Middleware
+// ----------------------
+app.use(clerkMiddleware());
+
+// ----------------------
+// Root Route
+// ----------------------
 app.get("/", (req, res) => {
   res.send("NoteNest backend is running");
 });
 
+// ----------------------
+// Routes
+// ----------------------
 app.use("/", healthRoutes);
 app.use("/", protectedRoutes);
 app.use("/", authRoutes);
@@ -73,7 +89,9 @@ app.use("/", notesRoutes);
 app.use("/", adminRoutes);
 app.use("/", googleAuthRoutes);
 
-// 404 route
+// ----------------------
+// 404 Route
+// ----------------------
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -81,7 +99,9 @@ app.use((req, res) => {
   });
 });
 
-// Global error handler
+// ----------------------
+// Global Error Handler
+// ----------------------
 app.use(errorHandler);
 
 module.exports = app;

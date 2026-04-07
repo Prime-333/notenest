@@ -4,10 +4,6 @@ const { syncUser } = require("../controllers/auth.controller");
 
 const router = express.Router();
 
-router.post(
-  "/sync",
-  requireAuth(),   // 👈 protection only here
-  syncUser
-);
+router.post("/auth/sync", requireAuth(), syncUser);
 
 module.exports = router;
