@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useUser, useAuth } from "@clerk/clerk-react";
 import { Toaster } from "react-hot-toast";
@@ -10,48 +10,31 @@ import UserProfile from "./pages/UserProfile";
 import AdminPanel from "./pages/AdminPanel";
 
 import { syncUser } from "./services/notesService";
+import { setAuthTokenGetter } from "./utils/api";
 
 export default function App() {
-  const { isSignedIn, isLoaded, user } = useUser();
+  const { isSignedIn, isLoaded } = useUser();
   const { getToken } = useAuth();
-  const hasSyncedRef = useRef(false);
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn || !user || hasSyncedRef.current) return;
+    setAuthTokenGetter(getToken);
+  }, [getToken]);
 
-    const syncCurrentUser = async () => {
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+
+    const sync = async () => {
       try {
-        const token = await getToken();
-
-        if (!token) {
-          console.warn("⚠️ No Clerk token available for sync");
-          return;
-        }
-
+        console.log("🔄 Syncing user...");
         await syncUser();
-        hasSyncedRef.current = true;
         console.log("✅ User synced successfully");
       } catch (err) {
         console.error("❌ Sync failed:", err?.response?.data || err.message);
-
-        // Retry once after short delay (helps mobile / slow session init)
-        setTimeout(async () => {
-          try {
-            await syncUser();
-            hasSyncedRef.current = true;
-            console.log("✅ User synced successfully on retry");
-          } catch (retryErr) {
-            console.error(
-              "❌ Retry sync failed:",
-              retryErr?.response?.data || retryErr.message
-            );
-          }
-        }, 1500);
       }
     };
 
-    syncCurrentUser();
-  }, [isSignedIn, isLoaded, user, getToken]);
+    sync();
+  }, [isSignedIn, isLoaded]);
 
   return (
     <>

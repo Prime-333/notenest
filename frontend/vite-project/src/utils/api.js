@@ -6,10 +6,16 @@ const API = axios.create({
     "https://notenest-backend-q7n2.onrender.com",
 });
 
+let getTokenFn = null;
+
+export const setAuthTokenGetter = (fn) => {
+  getTokenFn = fn;
+};
+
 API.interceptors.request.use(async (config) => {
   try {
-    if (window.Clerk?.session) {
-      const token = await window.Clerk.session.getToken();
+    if (getTokenFn) {
+      const token = await getTokenFn();
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -17,6 +23,7 @@ API.interceptors.request.use(async (config) => {
   } catch (error) {
     console.error("Token error:", error);
   }
+
   return config;
 });
 

@@ -203,8 +203,7 @@ export default function UploadNotes() {
     setUploading(true);
 
     try {
-      // ✅ Force sync before upload
-      await syncUser();
+      await syncUser(); // backup sync before upload
 
       const formData = new FormData();
       formData.append("file", file);
@@ -215,12 +214,9 @@ export default function UploadNotes() {
 
       await uploadNote(formData);
 
-      toast.success("Notes uploaded successfully!");
       setSuccess(true);
-
       setTimeout(() => navigate("/dashboard"), 2500);
     } catch (err) {
-      console.error("Upload error:", err?.response?.data || err.message);
       toast.error(
         err?.response?.data?.message || "Upload failed. Please try again."
       );
@@ -429,7 +425,9 @@ export default function UploadNotes() {
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 outline-none focus:border-orange-400 bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">
-                  {form.branch ? "Select subject (optional)" : "Select branch first"}
+                  {form.branch
+                    ? "Select subject (optional)"
+                    : "Select branch first"}
                 </option>
                 {availableSubjects.map((s) => (
                   <option key={s} value={s}>
